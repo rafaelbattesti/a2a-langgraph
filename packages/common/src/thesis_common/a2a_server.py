@@ -8,15 +8,26 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable
+from uuid import uuid4
 
 import uvicorn
 from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.apps import A2AStarletteApplication
 from a2a.server.events import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.routes.agent_card_routes import create_agent_card_routes
+from a2a.server.routes.jsonrpc_routes import create_jsonrpc_routes
 from a2a.server.tasks import InMemoryTaskStore
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from a2a.utils import new_agent_text_message
+from a2a.types import (
+    AgentCapabilities,
+    AgentCard,
+    AgentInterface,
+    AgentSkill,
+    Message,
+    Part,
+    Role,
+)
+from a2a.utils import DEFAULT_RPC_URL, TransportProtocol
+from starlette.applications import Starlette
 
 from . import config
 
@@ -29,7 +40,6 @@ def build_card(
     return AgentCard(
         name=name,
         description=description,
-        url=public_url,
         version=version,
         capabilities=AgentCapabilities(streaming=False),
         default_input_modes=["text"],
@@ -41,6 +51,9 @@ def build_card(
                 description=description,
                 tags=["thesis", "research"],
             )
+        ],
+        supported_interfaces=[
+            AgentInterface(protocol_binding=TransportProtocol.JSONRPC, url=public_url)
         ],
     )
 
@@ -56,7 +69,12 @@ class _JsonExecutor(AgentExecutor):
         except json.JSONDecodeError:
             payload = {"topic": raw}
         result = await self._handler(payload)
-        await event_queue.enqueue_event(new_agent_text_message(json.dumps(result)))
+        message = Message(
+            message_id=uuid4().hex,
+            role=Role.ROLE_AGENT,
+            parts=[Part(text=json.dumps(result))],
+        )
+        await event_queue.enqueue_event(message)
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         raise NotImplementedError("cancellation is not supported in the MVP")
@@ -66,8 +84,12 @@ def build_app(card: AgentCard, handler: Handler):
     request_handler = DefaultRequestHandler(
         agent_executor=_JsonExecutor(handler),
         task_store=InMemoryTaskStore(),
+        agent_card=card,
     )
-    return A2AStarletteApplication(agent_card=card, http_handler=request_handler).build()
+    routes = create_agent_card_routes(card) + create_jsonrpc_routes(
+        request_handler, DEFAULT_RPC_URL
+    )
+    return Starlette(routes=routes)
 
 
 def serve(card: AgentCard, handler: Handler) -> None:

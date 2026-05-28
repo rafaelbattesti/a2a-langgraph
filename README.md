@@ -260,8 +260,10 @@ uv run pytest          # deterministic unit tests (no network, no LLM)
 
 - **Python is pinned to 3.12** across the workspace and images for LangChain /
   LangGraph / a2a-sdk compatibility, even though the host may run a newer version.
-- **`a2a-sdk` is pinned to `0.3.26`** (classic Starlette + Pydantic API). The
-  `1.0.x` line is a protobuf/gRPC redesign with a different surface.
+- **`a2a-sdk` is on the `1.0.x` line** — protobuf message types served as JSON-RPC
+  over Starlette (via the `[http-server]` extra). The shared client/server helpers
+  in `thesis_common` (`a2a_client.py` / `a2a_server.py`) wrap this surface so the
+  agents themselves stay decoupled from the SDK.
 - This is an **MVP**: timeouts are basic, there's no auth/observability, and task
   state is in-memory. Those are the hardening phase.
 ```
