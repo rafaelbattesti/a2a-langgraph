@@ -9,6 +9,7 @@ from thesis_common.schemas import SynthesisRequest, SynthesisResponse
 from .graph import build_graph
 
 _graph = build_graph()
+SEMANTIC_TAGS = ("synthesis", "thesis-draft")
 
 
 async def handle(payload: SynthesisRequest) -> SynthesisResponse:
@@ -29,5 +30,6 @@ def main() -> None:
         public_url=config.PUBLIC_URL,
         input_model=SynthesisRequest,
         output_model=SynthesisResponse,
+        semantic_tags=SEMANTIC_TAGS,
     )
     serve(card, handle, request_model=SynthesisRequest, response_model=SynthesisResponse)

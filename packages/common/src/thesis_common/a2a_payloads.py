@@ -67,8 +67,6 @@ def model_from_message(message: Message | None, model: type[T]) -> T:
 
 def contract_tags(input_model: type[BaseModel], output_model: type[BaseModel]) -> list[str]:
     return [
-        "thesis",
-        "research",
         f"contract:{CONTRACT_VERSION}",
         f"input:{input_model.__name__}",
         f"output:{output_model.__name__}",
@@ -80,7 +78,14 @@ def contract_extension_params(
 ) -> dict:
     return {
         "contract_version": CONTRACT_VERSION,
-        "input_schema": input_model.__name__,
-        "output_schema": output_model.__name__,
-        "media_type": JSON_MEDIA_TYPE,
+        "input": {
+            "name": input_model.__name__,
+            "media_type": JSON_MEDIA_TYPE,
+            "json_schema": input_model.model_json_schema(),
+        },
+        "output": {
+            "name": output_model.__name__,
+            "media_type": JSON_MEDIA_TYPE,
+            "json_schema": output_model.model_json_schema(),
+        },
     }

@@ -6,6 +6,7 @@ The loop repeats while the Critic rejects viability and revisions < MAX_REVISION
 
 from __future__ import annotations
 
+import logging
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -24,6 +25,8 @@ from thesis_common.schemas import (
     ThesisResult,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class CoordState(TypedDict, total=False):
     topic: str
@@ -35,33 +38,52 @@ class CoordState(TypedDict, total=False):
 
 
 async def _research(state: CoordState) -> dict:
+    logger.info("Coordinator started the research step.")
     response = await call_agent(
         config.RESEARCHER_URL,
         ResearchRequest(topic=state["topic"]),
         ResearchResponse,
+    )
+    logger.info(
+        "Coordinator completed the research step with %s source(s).",
+        len(response.findings.sources),
     )
     return {"findings": response.findings.model_dump()}
 
 
 async def _synthesize(state: CoordState) -> dict:
     critique = Critique(**state["critique"]) if state.get("critique") else None
+    revision = state.get("revisions", 0)
+    logger.info(
+        "Coordinator started synthesis revision %s with critique feedback: %s.",
+        revision,
+        critique is not None,
+    )
     payload = SynthesisRequest(
-        topic=state["topic"],
         findings=ResearchFindings(**state["findings"]),
         critique=critique,
-        revision=state.get("revisions", 0),
+        revision=revision,
     )
     response = await call_agent(config.SYNTHESIZER_URL, payload, SynthesisResponse)
+    logger.info("Coordinator completed synthesis revision %s.", revision)
     return {"draft": response.draft.model_dump()}
 
 
 async def _critique(state: CoordState) -> dict:
+    logger.info(
+        "Coordinator started critique after revision %s.",
+        state.get("revisions", 0),
+    )
     payload = CritiqueRequest(
-        topic=state["topic"],
         draft=ThesisDraft(**state["draft"]),
         findings=ResearchFindings(**state["findings"]),
     )
     response = await call_agent(config.CRITIC_URL, payload, CritiqueResponse)
+    logger.info(
+        "Coordinator completed critique. Viable: %s. Next revision count: %s.",
+        response.critique.viable,
+        state.get("revisions", 0) + 1,
+    )
     return {
         "critique": response.critique.model_dump(),
         "revisions": state.get("revisions", 0) + 1,
@@ -71,11 +93,24 @@ async def _critique(state: CoordState) -> dict:
 def _route(state: CoordState) -> str:
     critique = Critique(**state["critique"])
     if critique.viable or state["revisions"] >= config.MAX_REVISIONS:
+        logger.info(
+            "Coordinator routing to finalize. Viable: %s. Revisions: %s of %s.",
+            critique.viable,
+            state["revisions"],
+            config.MAX_REVISIONS,
+        )
         return "finalize"
+    logger.info(
+        "Coordinator routing back to synthesize. Viable: %s. Revisions: %s of %s.",
+        critique.viable,
+        state["revisions"],
+        config.MAX_REVISIONS,
+    )
     return "synthesize"
 
 
 async def _finalize(state: CoordState) -> dict:
+    logger.info("Coordinator started finalization after %s revision(s).", state["revisions"])
     findings = ResearchFindings(**state["findings"])
     draft = ThesisDraft(**state["draft"])
     critique = Critique(**state["critique"])
@@ -86,6 +121,12 @@ async def _finalize(state: CoordState) -> dict:
         viability=critique,
         sources=findings.sources,
         revisions=state["revisions"],
+    )
+    logger.info(
+        "Coordinator completed finalization. Viable: %s. Sources: %s. Revisions: %s.",
+        critique.viable,
+        len(findings.sources),
+        state["revisions"],
     )
     return {"result": result.model_dump()}
 

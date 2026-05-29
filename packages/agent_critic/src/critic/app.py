@@ -9,6 +9,7 @@ from thesis_common.schemas import CritiqueRequest, CritiqueResponse
 from .graph import build_graph
 
 _graph = build_graph()
+SEMANTIC_TAGS = ("critique", "viability-review")
 
 
 async def handle(payload: CritiqueRequest) -> CritiqueResponse:
@@ -28,5 +29,6 @@ def main() -> None:
         public_url=config.PUBLIC_URL,
         input_model=CritiqueRequest,
         output_model=CritiqueResponse,
+        semantic_tags=SEMANTIC_TAGS,
     )
     serve(card, handle, request_model=CritiqueRequest, response_model=CritiqueResponse)

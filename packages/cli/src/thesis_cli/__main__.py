@@ -7,6 +7,7 @@ import asyncio
 import os
 
 from thesis_common.a2a_client import call_agent
+from thesis_common.log_config import configure_logging
 from thesis_common.schemas import ThesisRequest, ThesisResult
 
 DEFAULT_URL = os.environ.get("COORDINATOR_URL", "http://localhost:9000")
@@ -29,6 +30,7 @@ def _render(thesis: ThesisResult) -> str:
 
 
 def main() -> None:
+    configure_logging()
     parser = argparse.ArgumentParser(description="Generate a reasoned, viable research thesis.")
     parser.add_argument("topic", help="research topic or area")
     parser.add_argument(

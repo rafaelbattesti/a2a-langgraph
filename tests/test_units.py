@@ -1,5 +1,7 @@
 """Deterministic unit tests for pure logic (no network, no LLM)."""
 
+import logging
+
 import pytest
 from a2a.helpers.proto_helpers import new_data_message, new_text_message
 from a2a.types import Role
@@ -9,20 +11,30 @@ from coordinator.graph import _route
 from mcp_arxiv import server as mcp_arxiv_server
 from researcher.mcp_tools import _coerce
 from thesis_common import config
+from thesis_common import a2a_client
 from thesis_common.a2a_payloads import (
     JSON_MEDIA_TYPE,
     PayloadContractError,
     message_from_model,
     model_from_message,
 )
-from thesis_common.a2a_server import CONTRACT_EXTENSION_URI, build_card
+from thesis_common.a2a_server import (
+    CONTRACT_EXTENSION_URI,
+    _StructuredExecutor,
+    build_card,
+)
+from thesis_common.log_config import parse_log_level
 from thesis_common.schemas import (
     CONTRACT_VERSION,
     Critique,
+    CritiqueRequest,
+    CritiqueResponse,
+    ResearchFindings,
     ResearchRequest,
     ResearchResponse,
     Source,
     SynthesisRequest,
+    ThesisDraft,
     ThesisResult,
 )
 
@@ -63,6 +75,60 @@ def test_arxiv_search_raises_unexpected_http_errors(monkeypatch):
 
     with pytest.raises(mcp_arxiv_server.arxiv.HTTPError):
         mcp_arxiv_server.arxiv_search("bad query")
+
+
+def test_parse_log_level_accepts_names_and_numeric_values():
+    assert parse_log_level("INFO") == 20
+    assert parse_log_level("debug") == 10
+    assert parse_log_level("30") == 30
+
+
+def test_parse_log_level_rejects_invalid_values():
+    assert parse_log_level("chatty") is None
+
+
+@pytest.mark.asyncio
+async def test_call_agent_logs_transport_failures(monkeypatch, caplog):
+    async def fail_create_client(base_url, client_config):
+        raise RuntimeError("card resolution failed")
+
+    monkeypatch.setattr(a2a_client, "create_client", fail_create_client)
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(RuntimeError, match="card resolution failed"):
+            await a2a_client.call_agent(
+                "http://agent_researcher:8080",
+                ResearchRequest(topic="efficient RAG"),
+                ResearchResponse,
+            )
+
+    assert "failed while sending ResearchRequest" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_executor_logs_handler_failures(caplog):
+    async def fail_handler(payload):
+        raise RuntimeError("LLM unavailable")
+
+    class Context:
+        message = message_from_model(
+            ResearchRequest(topic="efficient RAG"), role=Role.ROLE_USER
+        )
+        task_id = "task-1"
+        context_id = "context-1"
+
+    executor = _StructuredExecutor(
+        fail_handler,
+        "Researcher",
+        ResearchRequest,
+        ResearchResponse,
+    )
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(RuntimeError, match="LLM unavailable"):
+            await executor.execute(Context(), object())
+
+    assert "Researcher failed while handling ResearchRequest" in caplog.text
 
 
 def test_route_finalizes_when_viable():
@@ -115,6 +181,30 @@ def test_malformed_synthesis_payload_fails_before_graph_execution():
         model_from_message(message, SynthesisRequest)
 
 
+def test_synthesis_and_critique_requests_do_not_require_top_level_topic():
+    findings = ResearchFindings(topic="efficient RAG", synthesis="Evidence summary")
+    draft = ThesisDraft(statement="S", argument="A")
+
+    synthesis = SynthesisRequest(findings=findings)
+    critique = CritiqueRequest(draft=draft, findings=findings)
+
+    assert synthesis.findings.topic == "efficient RAG"
+    assert critique.findings.topic == "efficient RAG"
+
+
+def test_synthesis_request_rejects_extra_top_level_topic():
+    findings = {
+        "topic": "efficient RAG",
+        "synthesis": "Evidence summary",
+        "sources": [],
+    }
+
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        SynthesisRequest.model_validate(
+            {"topic": "discarded topic", "findings": findings}
+        )
+
+
 def test_agent_card_advertises_payload_contracts():
     card = build_card(
         name="Researcher",
@@ -123,6 +213,7 @@ def test_agent_card_advertises_payload_contracts():
         public_url="http://agent_researcher:8080",
         input_model=ResearchRequest,
         output_model=ResearchResponse,
+        semantic_tags=("research", "evidence", "arxiv", "mcp"),
     )
 
     skill = card.skills[0]
@@ -137,6 +228,30 @@ def test_agent_card_advertises_payload_contracts():
     assert "input:ResearchRequest" in skill.tags
     assert "output:ResearchResponse" in skill.tags
     assert extension.uri == CONTRACT_EXTENSION_URI
-    assert params["input_schema"] == "ResearchRequest"
-    assert params["output_schema"] == "ResearchResponse"
     assert params["contract_version"] == CONTRACT_VERSION
+    assert params["input"]["name"] == "ResearchRequest"
+    assert params["input"]["media_type"] == JSON_MEDIA_TYPE
+    assert params["input"]["json_schema"]["title"] == "ResearchRequest"
+    assert params["input"]["json_schema"]["properties"]["topic"]["type"] == "string"
+    assert params["output"]["name"] == "ResearchResponse"
+    assert params["output"]["media_type"] == JSON_MEDIA_TYPE
+    assert params["output"]["json_schema"]["title"] == "ResearchResponse"
+
+
+def test_common_card_builder_does_not_homogenize_semantic_tags():
+    card = build_card(
+        name="Critic",
+        description="Judges thesis viability.",
+        skill_id="critique_thesis",
+        public_url="http://agent_critic:8080",
+        input_model=CritiqueRequest,
+        output_model=CritiqueResponse,
+        semantic_tags=("critique", "viability-review"),
+    )
+
+    tags = set(card.skills[0].tags)
+
+    assert {"critique", "viability-review"}.issubset(tags)
+    assert "contract:1.0.0" in tags
+    assert "research" not in tags
+    assert "thesis" not in tags

@@ -246,6 +246,7 @@ sequenceDiagram
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | all agents |
 | `LLAMA_MODEL` | `llama3.1:8b` | all agents |
+| `LOG_LEVEL` | `INFO` | all A2A agents and CLI |
 | `MAX_REVISIONS` | `2` | coordinator |
 | `MCP_ARXIV_URL` | `http://mcp_arxiv:8000/mcp` | researcher |
 | `RESEARCHER_URL` / `CRITIC_URL` / `SYNTHESIZER_URL` | compose service URLs | coordinator |

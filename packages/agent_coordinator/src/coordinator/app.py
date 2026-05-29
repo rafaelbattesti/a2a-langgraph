@@ -9,6 +9,7 @@ from thesis_common.schemas import ThesisRequest, ThesisResult
 from .graph import build_graph
 
 _graph = build_graph()
+SEMANTIC_TAGS = ("orchestration", "thesis")
 
 
 async def handle(payload: ThesisRequest) -> ThesisResult:
@@ -27,5 +28,6 @@ def main() -> None:
         public_url=config.PUBLIC_URL,
         input_model=ThesisRequest,
         output_model=ThesisResult,
+        semantic_tags=SEMANTIC_TAGS,
     )
     serve(card, handle, request_model=ThesisRequest, response_model=ThesisResult)

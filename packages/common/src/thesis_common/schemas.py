@@ -59,7 +59,6 @@ class ResearchResponse(ContractModel):
 
 
 class SynthesisRequest(ContractModel):
-    topic: str = Field(min_length=1)
     findings: ResearchFindings
     critique: Critique | None = None
     revision: int = 0
@@ -70,7 +69,6 @@ class SynthesisResponse(ContractModel):
 
 
 class CritiqueRequest(ContractModel):
-    topic: str = Field(min_length=1)
     draft: ThesisDraft
     findings: ResearchFindings
 

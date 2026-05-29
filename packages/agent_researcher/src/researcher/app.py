@@ -9,6 +9,7 @@ from thesis_common.schemas import ResearchRequest, ResearchResponse
 from .graph import build_graph
 
 _graph = build_graph()
+SEMANTIC_TAGS = ("research", "evidence", "arxiv", "mcp")
 
 
 async def handle(payload: ResearchRequest) -> ResearchResponse:
@@ -24,5 +25,6 @@ def main() -> None:
         public_url=config.PUBLIC_URL,
         input_model=ResearchRequest,
         output_model=ResearchResponse,
+        semantic_tags=SEMANTIC_TAGS,
     )
     serve(card, handle, request_model=ResearchRequest, response_model=ResearchResponse)

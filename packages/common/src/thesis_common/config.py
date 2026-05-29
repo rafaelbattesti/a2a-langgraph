@@ -16,6 +16,7 @@ LLAMA_MODEL = _env("LLAMA_MODEL", "llama3.1:8b")
 # --- This agent's own HTTP binding / advertised URL ---
 PORT = int(_env("PORT", "8080"))
 PUBLIC_URL = _env("PUBLIC_URL", f"http://localhost:{PORT}")
+LOG_LEVEL = _env("LOG_LEVEL", "INFO")
 
 # --- Coordinator -> specialist peers (A2A base URLs) ---
 RESEARCHER_URL = _env("RESEARCHER_URL", "http://agent_researcher:8080")
