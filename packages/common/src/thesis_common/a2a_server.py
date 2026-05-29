@@ -1,14 +1,12 @@
 """Minimal A2A server scaffolding shared by every agent.
 
-An agent supplies an async ``handler(payload: dict) -> dict``; this module wraps
-it in an A2A ``AgentExecutor`` that carries JSON as the message text.
+An agent supplies an async typed handler; this module wraps it in an A2A
+``AgentExecutor`` that carries Pydantic contracts as structured data parts.
 """
 
 from __future__ import annotations
 
-import json
 from collections.abc import Awaitable, Callable
-from uuid import uuid4
 
 import uvicorn
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -20,36 +18,72 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
+    AgentExtension,
     AgentInterface,
     AgentSkill,
-    Message,
-    Part,
     Role,
 )
+from a2a.utils.errors import InvalidAgentResponseError, InvalidParamsError
 from a2a.utils import DEFAULT_RPC_URL, TransportProtocol
+from google.protobuf import struct_pb2
+from google.protobuf.json_format import ParseDict
+from pydantic import BaseModel, ValidationError
 from starlette.applications import Starlette
 
 from . import config
+from .a2a_payloads import (
+    JSON_MEDIA_TYPE,
+    PayloadContractError,
+    contract_extension_params,
+    contract_tags,
+    message_from_model,
+    model_from_message,
+)
 
-Handler = Callable[[dict], Awaitable[dict]]
+Handler = Callable[[BaseModel], Awaitable[BaseModel | dict]]
+
+CONTRACT_EXTENSION_URI = "urn:thesis:a2a:contract"
+
+
+def _struct(value: dict) -> struct_pb2.Struct:
+    return ParseDict(value, struct_pb2.Struct())
 
 
 def build_card(
-    *, name: str, description: str, skill_id: str, public_url: str, version: str = "0.1.0"
+    *,
+    name: str,
+    description: str,
+    skill_id: str,
+    public_url: str,
+    input_model: type[BaseModel],
+    output_model: type[BaseModel],
+    version: str = "0.1.0",
 ) -> AgentCard:
     return AgentCard(
         name=name,
         description=description,
         version=version,
-        capabilities=AgentCapabilities(streaming=False),
-        default_input_modes=["text"],
-        default_output_modes=["text"],
+        capabilities=AgentCapabilities(
+            streaming=False,
+            extensions=[
+                AgentExtension(
+                    uri=CONTRACT_EXTENSION_URI,
+                    description="Typed A2A payload contract for this agent skill.",
+                    required=False,
+                    params=_struct(contract_extension_params(input_model, output_model)),
+                )
+            ],
+        ),
+        default_input_modes=[JSON_MEDIA_TYPE],
+        default_output_modes=[JSON_MEDIA_TYPE],
         skills=[
             AgentSkill(
                 id=skill_id,
                 name=name,
                 description=description,
-                tags=["thesis", "research"],
+                tags=contract_tags(input_model, output_model),
+                input_modes=[JSON_MEDIA_TYPE],
+                output_modes=[JSON_MEDIA_TYPE],
             )
         ],
         supported_interfaces=[
@@ -58,21 +92,43 @@ def build_card(
     )
 
 
-class _JsonExecutor(AgentExecutor):
-    def __init__(self, handler: Handler) -> None:
+class _StructuredExecutor(AgentExecutor):
+    def __init__(
+        self,
+        handler: Handler,
+        request_model: type[BaseModel],
+        response_model: type[BaseModel],
+    ) -> None:
         self._handler = handler
+        self._request_model = request_model
+        self._response_model = response_model
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
-        raw = context.get_user_input() or "{}"
         try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError:
-            payload = {"topic": raw}
+            payload = model_from_message(context.message, self._request_model)
+        except PayloadContractError as exc:
+            raise InvalidParamsError(message=str(exc), data=exc.data) from exc
+
         result = await self._handler(payload)
-        message = Message(
-            message_id=uuid4().hex,
+
+        try:
+            if isinstance(result, self._response_model):
+                response = result
+            elif isinstance(result, BaseModel):
+                response = self._response_model.model_validate(result.model_dump())
+            else:
+                response = self._response_model.model_validate(result)
+        except ValidationError as exc:
+            raise InvalidAgentResponseError(
+                message=f"Handler returned invalid {self._response_model.__name__}",
+                data={"errors": exc.errors()},
+            ) from exc
+
+        message = message_from_model(
+            response,
             role=Role.ROLE_AGENT,
-            parts=[Part(text=json.dumps(result))],
+            context_id=context.context_id,
+            task_id=context.task_id,
         )
         await event_queue.enqueue_event(message)
 
@@ -80,9 +136,15 @@ class _JsonExecutor(AgentExecutor):
         raise NotImplementedError("cancellation is not supported in the MVP")
 
 
-def build_app(card: AgentCard, handler: Handler):
+def build_app(
+    card: AgentCard,
+    handler: Handler,
+    *,
+    request_model: type[BaseModel],
+    response_model: type[BaseModel],
+):
     request_handler = DefaultRequestHandler(
-        agent_executor=_JsonExecutor(handler),
+        agent_executor=_StructuredExecutor(handler, request_model, response_model),
         task_store=InMemoryTaskStore(),
         agent_card=card,
     )
@@ -92,5 +154,20 @@ def build_app(card: AgentCard, handler: Handler):
     return Starlette(routes=routes)
 
 
-def serve(card: AgentCard, handler: Handler) -> None:
-    uvicorn.run(build_app(card, handler), host="0.0.0.0", port=config.PORT)
+def serve(
+    card: AgentCard,
+    handler: Handler,
+    *,
+    request_model: type[BaseModel],
+    response_model: type[BaseModel],
+) -> None:
+    uvicorn.run(
+        build_app(
+            card,
+            handler,
+            request_model=request_model,
+            response_model=response_model,
+        ),
+        host="0.0.0.0",
+        port=config.PORT,
+    )

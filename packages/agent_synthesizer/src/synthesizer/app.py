@@ -4,20 +4,21 @@ from __future__ import annotations
 
 from thesis_common import config
 from thesis_common.a2a_server import build_card, serve
+from thesis_common.schemas import SynthesisRequest, SynthesisResponse
 
 from .graph import build_graph
 
 _graph = build_graph()
 
 
-async def handle(payload: dict) -> dict:
+async def handle(payload: SynthesisRequest) -> SynthesisResponse:
     state = {
-        "findings": payload["findings"],
-        "critique": payload.get("critique"),
-        "revision": payload.get("revision", 0),
+        "findings": payload.findings.model_dump(),
+        "critique": payload.critique.model_dump() if payload.critique else None,
+        "revision": payload.revision,
     }
     result = await _graph.ainvoke(state)
-    return result["draft"]
+    return SynthesisResponse(draft=result["draft"])
 
 
 def main() -> None:
@@ -26,5 +27,7 @@ def main() -> None:
         description="Composes a thesis statement and reasoned argument from research findings.",
         skill_id="synthesize_thesis",
         public_url=config.PUBLIC_URL,
+        input_model=SynthesisRequest,
+        output_model=SynthesisResponse,
     )
-    serve(card, handle)
+    serve(card, handle, request_model=SynthesisRequest, response_model=SynthesisResponse)

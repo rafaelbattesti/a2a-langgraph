@@ -4,16 +4,20 @@ from __future__ import annotations
 
 from thesis_common import config
 from thesis_common.a2a_server import build_card, serve
+from thesis_common.schemas import CritiqueRequest, CritiqueResponse
 
 from .graph import build_graph
 
 _graph = build_graph()
 
 
-async def handle(payload: dict) -> dict:
-    state = {"draft": payload["draft"], "findings": payload["findings"]}
+async def handle(payload: CritiqueRequest) -> CritiqueResponse:
+    state = {
+        "draft": payload.draft.model_dump(),
+        "findings": payload.findings.model_dump(),
+    }
     result = await _graph.ainvoke(state)
-    return result["critique"]
+    return CritiqueResponse(critique=result["critique"])
 
 
 def main() -> None:
@@ -22,5 +26,7 @@ def main() -> None:
         description="Judges whether a thesis draft is novel, feasible and well grounded.",
         skill_id="critique_thesis",
         public_url=config.PUBLIC_URL,
+        input_model=CritiqueRequest,
+        output_model=CritiqueResponse,
     )
-    serve(card, handle)
+    serve(card, handle, request_model=CritiqueRequest, response_model=CritiqueResponse)

@@ -1,42 +1,79 @@
-"""Typed payloads exchanged between agents over A2A (carried as JSON text)."""
+"""Typed payloads exchanged between agents over A2A structured data parts."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+CONTRACT_VERSION = "1.0.0"
 
 
-class ThesisRequest(BaseModel):
-    topic: str
+class ContractModel(BaseModel):
+    """Base model for versioned agent-to-agent payload contracts."""
+
+    model_config = ConfigDict(extra="forbid")
 
 
-class Source(BaseModel):
+class ThesisRequest(ContractModel):
+    topic: str = Field(min_length=1)
+
+
+class Source(ContractModel):
     title: str
     summary: str
     url: str
 
 
-class ResearchFindings(BaseModel):
-    topic: str
+class ResearchFindings(ContractModel):
+    topic: str = Field(min_length=1)
     sources: list[Source] = Field(default_factory=list)
     synthesis: str
 
 
-class ThesisDraft(BaseModel):
+class ThesisDraft(ContractModel):
     statement: str
     argument: str
     revision: int = 0
 
 
-class Critique(BaseModel):
+class Critique(ContractModel):
     viable: bool
     issues: list[str] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
 
 
-class ThesisResult(BaseModel):
-    topic: str
+class ThesisResult(ContractModel):
+    topic: str = Field(min_length=1)
     statement: str
     argument: str
     viability: Critique
     sources: list[Source] = Field(default_factory=list)
     revisions: int = 0
+
+
+class ResearchRequest(ContractModel):
+    topic: str = Field(min_length=1)
+
+
+class ResearchResponse(ContractModel):
+    findings: ResearchFindings
+
+
+class SynthesisRequest(ContractModel):
+    topic: str = Field(min_length=1)
+    findings: ResearchFindings
+    critique: Critique | None = None
+    revision: int = 0
+
+
+class SynthesisResponse(ContractModel):
+    draft: ThesisDraft
+
+
+class CritiqueRequest(ContractModel):
+    topic: str = Field(min_length=1)
+    draft: ThesisDraft
+    findings: ResearchFindings
+
+
+class CritiqueResponse(ContractModel):
+    critique: Critique

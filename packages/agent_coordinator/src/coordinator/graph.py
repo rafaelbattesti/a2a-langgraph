@@ -11,7 +11,18 @@ from typing import TypedDict
 from langgraph.graph import END, START, StateGraph
 from thesis_common import config
 from thesis_common.a2a_client import call_agent
-from thesis_common.schemas import Critique, ResearchFindings, ThesisDraft, ThesisResult
+from thesis_common.schemas import (
+    Critique,
+    CritiqueRequest,
+    CritiqueResponse,
+    ResearchFindings,
+    ResearchRequest,
+    ResearchResponse,
+    SynthesisRequest,
+    SynthesisResponse,
+    ThesisDraft,
+    ThesisResult,
+)
 
 
 class CoordState(TypedDict, total=False):
@@ -24,29 +35,37 @@ class CoordState(TypedDict, total=False):
 
 
 async def _research(state: CoordState) -> dict:
-    findings = await call_agent(config.RESEARCHER_URL, {"topic": state["topic"]})
-    return {"findings": findings}
+    response = await call_agent(
+        config.RESEARCHER_URL,
+        ResearchRequest(topic=state["topic"]),
+        ResearchResponse,
+    )
+    return {"findings": response.findings.model_dump()}
 
 
 async def _synthesize(state: CoordState) -> dict:
-    payload = {
-        "topic": state["topic"],
-        "findings": state["findings"],
-        "critique": state.get("critique"),
-        "revision": state.get("revisions", 0),
-    }
-    draft = await call_agent(config.SYNTHESIZER_URL, payload)
-    return {"draft": draft}
+    critique = Critique(**state["critique"]) if state.get("critique") else None
+    payload = SynthesisRequest(
+        topic=state["topic"],
+        findings=ResearchFindings(**state["findings"]),
+        critique=critique,
+        revision=state.get("revisions", 0),
+    )
+    response = await call_agent(config.SYNTHESIZER_URL, payload, SynthesisResponse)
+    return {"draft": response.draft.model_dump()}
 
 
 async def _critique(state: CoordState) -> dict:
-    payload = {
-        "topic": state["topic"],
-        "draft": state["draft"],
-        "findings": state["findings"],
+    payload = CritiqueRequest(
+        topic=state["topic"],
+        draft=ThesisDraft(**state["draft"]),
+        findings=ResearchFindings(**state["findings"]),
+    )
+    response = await call_agent(config.CRITIC_URL, payload, CritiqueResponse)
+    return {
+        "critique": response.critique.model_dump(),
+        "revisions": state.get("revisions", 0) + 1,
     }
-    critique = await call_agent(config.CRITIC_URL, payload)
-    return {"critique": critique, "revisions": state.get("revisions", 0) + 1}
 
 
 def _route(state: CoordState) -> str:

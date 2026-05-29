@@ -4,7 +4,8 @@ A coordinator-pattern multi-agent system that turns a research topic into a
 **reasoned, viability-checked research thesis**. Each agent is its own LangGraph
 graph and its own Docker image. Agents talk over **A2A**; the researcher reaches
 arXiv through an **MCP** server. All LLM inference runs against **Ollama on the
-host** (`llama3.1:8b`).
+host** (`llama3.1:8b`). A2A payloads are exchanged as structured data parts and
+validated against shared Pydantic contracts.
 
 ```
  CLI ──A2A──▶ Coordinator ──A2A──▶ Researcher ──MCP──▶ arXiv MCP server ──▶ arXiv
@@ -126,14 +127,14 @@ sequenceDiagram
     App-->>Res: AgentCard {url, skills}
     Res-->>Caller: AgentCard
 
-    Caller->>App: POST card.url, JSON-RPC message/send (JSON in TextPart)
+    Caller->>App: POST card.url, JSON-RPC message/send (JSON in data Part)
     App->>Ex: execute(context, event_queue)
-    Ex->>Ex: json.loads(context.get_user_input())
+    Ex->>Ex: model_from_message(context.message, RequestModel)
     Ex->>G: handler(payload) -> graph.ainvoke(state)
     G-->>Ex: result dict
-    Ex->>App: enqueue new_agent_text_message(json.dumps(result))
+    Ex->>App: enqueue data message validated as ResponseModel
     App-->>Caller: SendMessageSuccessResponse {result: Message}
-    Caller->>Caller: _extract -> json.loads(text) -> dict
+    Caller->>Caller: model_from_message(message, ResponseModel)
 ```
 
 ### 3. Researcher internals (LangGraph + MCP + Ollama)

@@ -1,21 +1,24 @@
-"""A2A client helper: send a JSON payload to a peer agent, get a JSON dict back."""
+"""A2A client helper for typed structured payload contracts."""
 
 from __future__ import annotations
 
-import json
+from typing import TypeVar
 from uuid import uuid4
 
 import httpx
 from a2a.client import ClientConfig, create_client
-from a2a.types import Message, Part, Role, SendMessageRequest
+from a2a.types import Message, Role, SendMessageRequest
 from a2a.utils import TransportProtocol
+from pydantic import BaseModel
+
+from .a2a_payloads import PayloadContractError, message_from_model, model_from_message
+
+T = TypeVar("T", bound=BaseModel)
 
 
-def _text_from_message(message: Message) -> str:
-    return "".join(part.text for part in message.parts if part.text)
-
-
-async def call_agent(base_url: str, payload: dict, timeout: float = 300.0) -> dict:
+async def call_agent(
+    base_url: str, payload: BaseModel, response_model: type[T], timeout: float = 300.0
+) -> T:
     async with httpx.AsyncClient(timeout=timeout) as http_client:
         client_config = ClientConfig(
             streaming=False,
@@ -24,17 +27,17 @@ async def call_agent(base_url: str, payload: dict, timeout: float = 300.0) -> di
         )
         client = await create_client(base_url, client_config)
         request = SendMessageRequest(
-            message=Message(
-                message_id=uuid4().hex,
-                role=Role.ROLE_USER,
-                parts=[Part(text=json.dumps(payload))],
-            )
+            message=message_from_model(payload, role=Role.ROLE_USER)
         )
-        text = ""
+        request.message.message_id = uuid4().hex
+        message: Message | None = None
         async for response in client.send_message(request):
             if response.WhichOneof("payload") == "message":
-                text = _text_from_message(response.message)
+                message = response.message
 
-        if not text:
-            raise RuntimeError("A2A peer returned an empty response")
-        return json.loads(text)
+        if message is None:
+            raise RuntimeError("A2A peer returned no message response")
+        try:
+            return model_from_message(message, response_model)
+        except PayloadContractError as exc:
+            raise RuntimeError(f"A2A peer returned invalid payload: {exc}") from exc

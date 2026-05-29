@@ -7,13 +7,12 @@ import asyncio
 import os
 
 from thesis_common.a2a_client import call_agent
-from thesis_common.schemas import ThesisResult
+from thesis_common.schemas import ThesisRequest, ThesisResult
 
 DEFAULT_URL = os.environ.get("COORDINATOR_URL", "http://localhost:9000")
 
 
-def _render(result: dict) -> str:
-    thesis = ThesisResult(**result)
+def _render(thesis: ThesisResult) -> str:
     lines = [
         f"\nTOPIC: {thesis.topic}",
         f"\nTHESIS:\n  {thesis.statement}",
@@ -32,10 +31,14 @@ def _render(result: dict) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a reasoned, viable research thesis.")
     parser.add_argument("topic", help="research topic or area")
-    parser.add_argument("--url", default=DEFAULT_URL, help=f"coordinator A2A URL (default: {DEFAULT_URL})")
+    parser.add_argument(
+        "--url",
+        default=DEFAULT_URL,
+        help=f"coordinator A2A URL (default: {DEFAULT_URL})",
+    )
     args = parser.parse_args()
 
-    result = asyncio.run(call_agent(args.url, {"topic": args.topic}))
+    result = asyncio.run(call_agent(args.url, ThesisRequest(topic=args.topic), ThesisResult))
     print(_render(result))
 
 
