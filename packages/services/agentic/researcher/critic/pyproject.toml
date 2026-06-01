@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Critic agent: judges whether a thesis draft is viable."
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "thesis-common",
+    "a2a-core",
+    "thesis-contracts",
+    "config",
+    "llm",
     "langgraph>=0.2",
 ]
 

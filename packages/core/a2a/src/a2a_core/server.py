@@ -32,8 +32,9 @@ from google.protobuf.json_format import ParseDict
 from pydantic import BaseModel, ValidationError
 from starlette.applications import Starlette
 
-from . import config
-from .a2a_payloads import (
+import config
+
+from .payloads import (
     JSON_MEDIA_TYPE,
     PayloadContractError,
     contract_extension_params,
@@ -41,7 +42,7 @@ from .a2a_payloads import (
     message_from_model,
     model_from_message,
 )
-from .log_config import configure_logging
+from observability import configure_logging
 
 Handler = Callable[[BaseModel], Awaitable[BaseModel | dict]]
 logger = logging.getLogger(__name__)

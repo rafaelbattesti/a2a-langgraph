@@ -1,10 +1,10 @@
-"""A2A entrypoint for the Researcher agent."""
+"""A2A entrypoint for the Librarian agent."""
 
 from __future__ import annotations
 
-from thesis_common import config
-from thesis_common.a2a_server import build_card, serve
-from thesis_common.schemas import ResearchRequest, ResearchResponse
+import config
+from a2a_core import build_card, serve
+from thesis_contracts import ResearchRequest, ResearchResponse
 
 from .graph import build_graph
 
@@ -19,7 +19,7 @@ async def handle(payload: ResearchRequest) -> ResearchResponse:
 
 def main() -> None:
     card = build_card(
-        name="Researcher",
+        name="Librarian",
         description="Gathers arXiv evidence via MCP and synthesizes research findings.",
         skill_id="gather_evidence",
         public_url=config.PUBLIC_URL,

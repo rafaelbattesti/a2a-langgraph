@@ -202,3 +202,180 @@ Later milestones:
 3. Persisted conversation/session state.
 4. Per-agent model and tool configuration.
 5. Auth, observability, retries, and structured failure telemetry.
+
+## Third Assessment: The A2A Interaction Model
+
+> The sections above are kept as historical record of earlier remediations and
+> their framing. They are **not** the authoritative reference. The single source
+> of truth for the A2A API and mental model is the installed `a2a-sdk` (proto
+> types, stubs, package source). Where an earlier claim conflicts with the
+> installed SDK or this section, the SDK and this section win.
+
+The first two remediations fixed payload *encoding* (opaque JSON text to typed
+data parts) and card *metadata*. They did not change the *interaction model*,
+which is still request/response RPC. This is the remaining root defect.
+
+### Root cause
+
+The shared scaffolding models A2A as typed RPC: one Pydantic model in, one out,
+carried as a single data `Message`. A2A instead models a `Task` lifecycle
+(`submitted -> working -> completed | failed | input_required | ...`) that
+produces `Artifact`s and emits events. The current executor enqueues a bare
+agent `Message` and never creates a task.
+
+This is **not protocol-violating** — `DefaultRequestHandlerV2.on_message_send`
+supports a valid "Message-only" mode, and the current code rides that narrow
+path. But it is the degenerate mode, and it forecloses durable tasks, streaming,
+progress, cancellation, and sessions — i.e. the chatbot north star.
+
+Verified against the installed `a2a-sdk` (proto types in `a2a.types.a2a_pb2`,
+`TaskUpdater`, `AgentExecutor`, `DefaultRequestHandlerV2`, `ActiveTask`).
+
+### Problem backlog (descends from the root)
+
+| ID | Problem | Evidence | Severity |
+|---|---|---|---:|
+| A1 | Executor emits a bare `Message`; no `Task` lifecycle. Task store is inert; no resumability/progress. | `a2a_server.py` `enqueue_event(message)` vs `TaskUpdater.submit/start_work/add_artifact/complete` | High (root) |
+| A2 | `Handler = Callable[[BaseModel], BaseModel \| dict]` bakes in RPC; no task awareness, fixed result shape, two-shape return smell. | `a2a_server.py` `Handler` type | High (root) |
+| B1 | Client keeps only the `message` payload, discards `task`/`status_update`/`artifact_update`. Breaks once the server returns a Task. | `a2a_client.py` `WhichOneof("payload") == "message"` | High |
+| B2 | Client masks real failures as "no message": framework turns a raised error into a failed `Task`, which the client ignores. | `active_task.py` producer marks task failed; client only reads `message` | High |
+| C1 | `cancel()` raises `NotImplementedError` — violates the `AgentExecutor` contract; cancel requests crash. | `a2a_server.py` `cancel` | Medium |
+| D1 | Streaming disabled; required for chat token/progress streaming. | `capabilities.streaming=False`, `ClientConfig(streaming=False)` | Medium (roadmap) |
+| E1 | Client never sets `context_id`; every call is a new context. `context_id` is the A2A session/conversation handle. | `a2a_client.py` sets only `message_id` | Medium (roadmap) |
+
+Checked and acceptable: proto `Struct` build via `ParseDict`; hand-assembling
+`create_agent_card_routes + create_jsonrpc_routes` (no higher-level app builder
+exists in this version); `WhichOneof("payload")` (correct oneof name — the logic
+around it is the defect, not the call).
+
+### Why each remediation is canonical library use
+
+Re-verified against `agent-stubs/a2a` and the installed package.
+
+- **A1 (drive the task via `TaskUpdater`).** The `EventQueue` ABC
+  (`events/event_queue.pyi`) exposes only `enqueue_event`; `TaskUpdater`
+  (`tasks/task_updater.pyi`) is the SDK's own façade that turns that single
+  primitive into `submit/start_work/add_artifact/complete`.
+  Using it is using the lifecycle the SDK defines, not hand-rolling task state.
+- **A2 (`AgentLogic` strategy receiving a `TaskUpdater`).** `AgentExecutor.execute`
+  returns `None` (`agent_execution/agent_executor.pyi`) — the unit of work is
+  "drive the task," not "return a value", so the strategy signature matches the
+  contract. A new behavior becomes a new `AgentLogic` while `StrategyExecutor`
+  stays the single `AgentExecutor` implementation (open/closed via the SDK seam).
+- **B1 (consume the stream to terminal, read `task.artifacts`).**
+  `Client.send_message` returns `AsyncIterator[StreamResponse]` whose `payload`
+  oneof is `task|message|status_update|artifact_update` (`client/client.pyi`).
+  The SDK's own `ResultAggregator.consume_all -> Task | Message | None`
+  (`tasks/result_aggregator.pyi`) confirms the final value is a `Task`, so the
+  client must read all variants, not cherry-pick `message`.
+- **B2 (read the failed `Task`).** `on_message_send` is typed `Message | Task`
+  (`request_handlers/default_request_handler_v2.pyi`) and the SDK converts an
+  executor exception into a failed task; reading the `task` variant surfaces it.
+  Checking `task.status.state == TaskState.TASK_STATE_FAILED` (proto enum) is the
+  canonical terminal check, replacing the "no message" heuristic.
+- **C1 (cooperative `cancel` via `TaskUpdater.cancel()`).** `AgentExecutor.cancel`
+  is an `@abstractmethod` (`agent_executor.pyi`) the handler invokes; honoring it
+  preserves Liskov instead of throwing. `TaskUpdater.cancel()` (`task_updater.pyi`)
+  is the SDK path to `TASK_STATE_CANCELED`, so cancellation uses the primitive.
+- **D1 (streaming via the SDK channel).** `on_message_send_stream` is gated by
+  `capabilities.streaming` and yields `Event`s (`default_request_handler_v2.pyi`);
+  progress is emitted with `TaskUpdater.update_status`/`add_artifact`
+  (`task_updater.pyi`). The matching client primitive is `ClientConfig.streaming`
+  + consuming the `StreamResponse` iterator (`client/client.pyi`) — no bespoke
+  channel.
+- **E1 (thread `context_id`).** `Message.context_id` (proto) and
+  `RequestContext.context_id` (`agent_execution/context.pyi`) are the SDK's
+  conversation/session handle, already propagated server-side. Setting it on the
+  outgoing `SendMessageRequest.message` uses the protocol's own field instead of
+  an external session map.
+
+### Target architecture: decompose `common`, adopt a Strategy executor
+
+`common` is dissolved into purpose-named workspace packages. Layering rule:
+**inheritance only where the SDK provides an ABC; composition/injection
+everywhere else.** A2A provides exactly one server-side inheritance point
+(`AgentExecutor`); that single fact decides the shape.
+
+```
+contracts        pure Pydantic; depends on nothing (no transport, no A2A)
+config  llm  observability    cross-cutting platform concerns
+reasoning (per-agent LangGraph graphs)   uses contracts/llm/MCP; imports NO a2a types
+a2a_runtime (adapter layer)              uses a2a-sdk + contracts
+  - StrategyExecutor  implements  a2a.AgentExecutor
+  - AgentLogic (Protocol)  <- injected per-agent strategy
+  - data-part helpers, app builder, client wrapper
+```
+
+Package map (import names prefixed to avoid shadowing stdlib; final names TBD):
+
+| Package | Depends on | Holds | Pattern |
+|---|---|---|---|
+| `contracts` | — | `ContractModel` base, versioning, JSON-schema card helpers | none (data) |
+| `thesis_contracts` | `contracts` | thesis request/response models | none (data) |
+| `config` | pydantic-settings | typed `BaseSettings`, per-agent subclasses, injected | settings + injection |
+| `observability` | stdlib | `configure_logging()`; telemetry later | none (function) |
+| `llm` | `config` | `model_for(role)` factory | Factory now; Strategy when models diverge |
+| `a2a_runtime` | `a2a-sdk`, `contracts` | `AgentLogic`, `StrategyExecutor`, data-part (de)serialization, app builder, client wrapper | Adapter + Strategy |
+
+Note: `message_from_model`/`model_from_message` move into `a2a_runtime` (they
+touch A2A `Message`); `contracts` stays transport-free.
+
+### The Strategy executor (replaces `Handler`)
+
+```python
+# a2a_runtime
+class AgentLogic(Protocol):
+    async def run(self, request: BaseModel, task: TaskUpdater) -> None: ...
+
+class StrategyExecutor(AgentExecutor):            # implements (is-a) — SDK ABC
+    def __init__(self, logic: AgentLogic, ...): ...   # uses (injected)
+    async def execute(self, context, event_queue):
+        updater = TaskUpdater(event_queue, context.task_id, context.context_id)  # uses
+        await updater.start_work()
+        try:
+            await self._logic.run(parsed_request, updater)
+        except Exception:
+            await updater.failed(...)              # executor GUARANTEES a terminal state
+            raise
+        # if logic did not reach terminal, executor completes
+```
+
+- Executor owns the **invariant** lifecycle (start_work, guaranteed terminal on
+  failure). Decision: the executor guarantees the terminal state.
+- Strategy owns the **variable** part — a one-shot agent emits one artifact +
+  `complete()`; a streaming agent emits many updates; an agent needing more info
+  calls `requires_input()`. This is how "result shape depends on the agent" is
+  expressed, with no `mode=` boolean fork.
+- Each agent's `AgentLogic` lives in its own package and calls its pure graph,
+  keeping LangGraph free of A2A types.
+
+### Relationships to A2A primitives (the canonical reference)
+
+| Your code <-> A2A primitive | Relationship |
+|---|---|
+| `StrategyExecutor` <-> `AgentExecutor` | implements (is-a) — the one true inheritance |
+| executor <-> `TaskUpdater` | uses (per-request) |
+| executor <-> `AgentLogic` | uses (injected) |
+| app <-> `TaskStore`/`InMemoryTaskStore` | uses (injected) |
+| app <-> `DefaultRequestHandler` | uses |
+| client wrapper <-> `Client` | uses (via `create_client`; never subclassed) |
+| everything <-> `Message`/`Task`/`Artifact`/`Part` | uses (data) |
+
+Headline: exactly one `is-a` against A2A exists in the whole system. A second
+base class against the SDK is a smell.
+
+### Migration sequence (additive; each step compiles and tests green)
+
+1. Create the new workspace packages empty, alongside `common`.
+2. Move dependency-free leaves: `contracts` (mechanism), `config`,
+   `observability`, `llm`. Update imports.
+3. Move thesis models into `thesis_contracts` (depends on `contracts`).
+4. Build `a2a_runtime`: `AgentLogic` + `StrategyExecutor` (terminal guarantee) +
+   data-part helpers + app builder. Fixes A1, A2. Port Researcher first as a
+   vertical slice, then the other agents.
+5. Rework the client wrapper to consume the stream to terminal and read
+   `task.artifacts`; surface failed-task state. Fixes B1, B2.
+6. Implement cooperative `cancel()`. Fixes C1.
+7. Delete `common`.
+8. Later slices on the new seam: streaming (D1), `context_id` sessions (E1),
+   durable `TaskStore`, skill registry.

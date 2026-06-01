@@ -1,24 +1,14 @@
-"""Factory and helpers for the shared chat model backed by host Ollama."""
+"""Completion helpers over the shared chat model."""
 
 from __future__ import annotations
 
 from typing import TypeVar
 
-from langchain_ollama import ChatOllama
 from pydantic import BaseModel
 
-from . import config
+from .factory import build_llm
 
 T = TypeVar("T", bound=BaseModel)
-
-
-def build_llm(temperature: float = 0.2, **kwargs) -> ChatOllama:
-    return ChatOllama(
-        model=config.LLAMA_MODEL,
-        base_url=config.OLLAMA_BASE_URL,
-        temperature=temperature,
-        **kwargs,
-    )
 
 
 async def complete_text(system: str, human: str, temperature: float = 0.3) -> str:

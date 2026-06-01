@@ -5,12 +5,22 @@ description = "Coordinator-pattern multi-agent system that produces a reasoned, 
 requires-python = ">=3.12,<3.13"
 
 [tool.uv.workspace]
-members = ["packages/*"]
+members = [
+    "packages/cli",
+    "packages/core/*",
+    "packages/services/agentic/researcher/*",
+]
 
 [tool.uv.sources]
-thesis-common = { workspace = true }
+contracts = { workspace = true }
+config = { workspace = true }
+observability = { workspace = true }
+llm = { workspace = true }
+thesis-contracts = { workspace = true }
+thesis-config = { workspace = true }
+a2a-core = { workspace = true }
 agent-coordinator = { workspace = true }
-agent-researcher = { workspace = true }
+agent-librarian = { workspace = true }
 agent-critic = { workspace = true }
 agent-synthesizer = { workspace = true }
 mcp-arxiv = { workspace = true }
@@ -20,10 +30,11 @@ thesis-cli = { workspace = true }
 [dependency-groups]
 dev = [
     "agent-coordinator",
-    "agent-researcher",
+    "agent-librarian",
     "agent-critic",
     "agent-synthesizer",
     "mcp-arxiv",
+    "mypy>=1.16",
     "thesis-cli",
     "pytest>=8",
     "pytest-asyncio>=0.24",

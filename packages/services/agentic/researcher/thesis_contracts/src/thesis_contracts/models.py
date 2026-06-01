@@ -1,16 +1,9 @@
-"""Typed payloads exchanged between agents over A2A structured data parts."""
+"""Thesis-capability payload models exchanged over A2A structured data parts."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
-
-CONTRACT_VERSION = "1.0.0"
-
-
-class ContractModel(BaseModel):
-    """Base model for versioned agent-to-agent payload contracts."""
-
-    model_config = ConfigDict(extra="forbid")
+from contracts import ContractModel
+from pydantic import Field
 
 
 class ThesisRequest(ContractModel):

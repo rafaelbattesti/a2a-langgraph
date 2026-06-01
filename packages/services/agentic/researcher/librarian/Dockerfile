@@ -4,6 +4,6 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock ./
 COPY packages ./packages
-RUN uv sync --frozen --no-dev --package agent-researcher
+RUN uv sync --frozen --no-dev --package agent-librarian
 ENV PATH="/app/.venv/bin:$PATH"
-CMD ["python", "-m", "researcher"]
+CMD ["python", "-m", "librarian"]

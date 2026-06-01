@@ -1,0 +1,21 @@
+[project]
+name = "a2a-core"
+version = "0.1.0"
+description = "A2A adapter layer: typed-contract data parts, server app builder, and client."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "contracts",
+    "config",
+    "observability",
+    "a2a-sdk[http-server]>=1.0.3,<2",
+    "httpx>=0.27",
+    "uvicorn>=0.30",
+    "pydantic>=2.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/a2a_core"]

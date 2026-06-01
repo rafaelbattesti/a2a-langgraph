@@ -1,10 +1,10 @@
-"""Process-level logging configuration."""
+"""Process-level logging configuration shared across services."""
 
 from __future__ import annotations
 
 import logging
 
-from . import config
+import config
 
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 LOG_LEVEL_NAMES = {

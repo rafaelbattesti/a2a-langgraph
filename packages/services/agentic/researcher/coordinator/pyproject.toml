@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Coordinator agent: orchestrates researcher/synthesizer/critic into a thesis."
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "thesis-common",
+    "a2a-core",
+    "thesis-contracts",
+    "thesis-config",
+    "config",
     "langgraph>=0.2",
 ]
 

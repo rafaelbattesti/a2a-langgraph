@@ -8,7 +8,7 @@ from a2a.helpers.proto_helpers import get_data_parts, new_data_message
 from a2a.types import Message, Role
 from pydantic import BaseModel, ValidationError
 
-from .schemas import CONTRACT_VERSION
+from contracts import CONTRACT_VERSION
 
 JSON_MEDIA_TYPE = "application/json"
 

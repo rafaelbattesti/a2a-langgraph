@@ -10,9 +10,9 @@ import logging
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from thesis_common import config
-from thesis_common.a2a_client import call_agent
-from thesis_common.schemas import (
+import thesis_config as config
+from a2a_core import call_agent
+from thesis_contracts import (
     Critique,
     CritiqueRequest,
     CritiqueResponse,
@@ -40,7 +40,7 @@ class CoordState(TypedDict, total=False):
 async def _research(state: CoordState) -> dict:
     logger.info("Coordinator started the research step.")
     response = await call_agent(
-        config.RESEARCHER_URL,
+        config.LIBRARIAN_URL,
         ResearchRequest(topic=state["topic"]),
         ResearchResponse,
     )

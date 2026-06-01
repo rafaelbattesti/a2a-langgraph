@@ -11,19 +11,19 @@ services:
   mcp_arxiv:
     build:
       context: .
-      dockerfile: packages/mcp_arxiv/Dockerfile
+      dockerfile: packages/services/agentic/researcher/mcp_arxiv/Dockerfile
     environment:
       PORT: "8000"
     networks: [thesis]
 
-  agent_researcher:
+  agent_librarian:
     build:
       context: .
-      dockerfile: packages/agent_researcher/Dockerfile
+      dockerfile: packages/services/agentic/researcher/librarian/Dockerfile
     environment:
       <<: *ollama
       PORT: "8080"
-      PUBLIC_URL: http://agent_researcher:8080
+      PUBLIC_URL: http://agent_librarian:8080
       MCP_ARXIV_URL: http://mcp_arxiv:8000/mcp
     extra_hosts: *host-gateway
     depends_on: [mcp_arxiv]
@@ -32,7 +32,7 @@ services:
   agent_critic:
     build:
       context: .
-      dockerfile: packages/agent_critic/Dockerfile
+      dockerfile: packages/services/agentic/researcher/critic/Dockerfile
     environment:
       <<: *ollama
       PORT: "8080"
@@ -43,7 +43,7 @@ services:
   agent_synthesizer:
     build:
       context: .
-      dockerfile: packages/agent_synthesizer/Dockerfile
+      dockerfile: packages/services/agentic/researcher/synthesizer/Dockerfile
     environment:
       <<: *ollama
       PORT: "8080"
@@ -54,17 +54,17 @@ services:
   agent_coordinator:
     build:
       context: .
-      dockerfile: packages/agent_coordinator/Dockerfile
+      dockerfile: packages/services/agentic/researcher/coordinator/Dockerfile
     environment:
       PORT: "8080"
       PUBLIC_URL: http://localhost:9000
-      RESEARCHER_URL: http://agent_researcher:8080
+      LIBRARIAN_URL: http://agent_librarian:8080
       CRITIC_URL: http://agent_critic:8080
       SYNTHESIZER_URL: http://agent_synthesizer:8080
       MAX_REVISIONS: ${MAX_REVISIONS:-2}
     ports:
       - "9000:8080"
-    depends_on: [agent_researcher, agent_critic, agent_synthesizer]
+    depends_on: [agent_librarian, agent_critic, agent_synthesizer]
     networks: [thesis]
 
 networks:

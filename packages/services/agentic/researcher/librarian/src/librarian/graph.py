@@ -1,12 +1,12 @@
-"""Researcher LangGraph: topic -> arXiv query -> fetch (MCP) -> synthesized findings."""
+"""Librarian LangGraph: topic -> arXiv query -> fetch (MCP) -> synthesized findings."""
 
 from __future__ import annotations
 
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from thesis_common.llm import complete_text
-from thesis_common.schemas import ResearchFindings, Source
+from llm import complete_text
+from thesis_contracts import ResearchFindings, Source
 
 from .mcp_tools import arxiv_search
 

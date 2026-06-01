@@ -9,22 +9,22 @@ from google.protobuf.json_format import MessageToDict
 
 from coordinator.graph import _route
 from mcp_arxiv import server as mcp_arxiv_server
-from researcher.mcp_tools import _coerce
-from thesis_common import config
-from thesis_common import a2a_client
-from thesis_common.a2a_payloads import (
+from librarian.mcp_tools import _coerce
+import thesis_config as config
+from a2a_core import client as a2a_client
+from a2a_core import (
     JSON_MEDIA_TYPE,
     PayloadContractError,
     message_from_model,
     model_from_message,
 )
-from thesis_common.a2a_server import (
+from a2a_core.server import (
     CONTRACT_EXTENSION_URI,
     _StructuredExecutor,
     build_card,
 )
-from thesis_common.log_config import parse_log_level
-from thesis_common.schemas import (
+from observability import parse_log_level
+from thesis_contracts import (
     CONTRACT_VERSION,
     Critique,
     CritiqueRequest,

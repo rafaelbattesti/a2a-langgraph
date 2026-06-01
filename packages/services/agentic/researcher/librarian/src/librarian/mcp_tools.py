@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from thesis_common import config
+import thesis_config as config
 
 
 def _loads(value) -> object:

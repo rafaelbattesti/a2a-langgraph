@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from thesis_common import config
-from thesis_common.a2a_server import build_card, serve
-from thesis_common.schemas import SynthesisRequest, SynthesisResponse
+import config
+from a2a_core import build_card, serve
+from thesis_contracts import SynthesisRequest, SynthesisResponse
 
 from .graph import build_graph
 

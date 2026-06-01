@@ -12,7 +12,7 @@ from a2a.types import Message, Role, SendMessageRequest
 from a2a.utils import TransportProtocol
 from pydantic import BaseModel
 
-from .a2a_payloads import PayloadContractError, message_from_model, model_from_message
+from .payloads import PayloadContractError, message_from_model, model_from_message
 
 T = TypeVar("T", bound=BaseModel)
 logger = logging.getLogger(__name__)

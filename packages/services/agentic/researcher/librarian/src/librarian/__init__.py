@@ -1,1 +1,1 @@
-"""Researcher agent."""
+"""Librarian agent."""

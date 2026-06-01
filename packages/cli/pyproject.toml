@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Thin A2A client that asks the coordinator for a thesis on a topic."
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "thesis-common",
+    "a2a-core",
+    "thesis-contracts",
+    "observability",
 ]
 
 [project.scripts]

@@ -6,8 +6,8 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
-from thesis_common.llm import complete_structured
-from thesis_common.schemas import Critique, ResearchFindings, ThesisDraft
+from llm import complete_structured
+from thesis_contracts import Critique, ResearchFindings, ThesisDraft
 
 SYSTEM = (
     "You are a rigorous research critic. Judge whether a proposed thesis is VIABLE: "
