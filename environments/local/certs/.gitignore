@@ -1,0 +1,8 @@
+# Private keys and CSRs must never be committed — this is a throwaway local dev CA.
+*.key
+*.csr
+
+# Leaf/server certs are regenerated locally per hostname; only the root CA cert
+# (ca.crt) is tracked, so clients/services can trust the chain.
+*.crt
+!ca.crt

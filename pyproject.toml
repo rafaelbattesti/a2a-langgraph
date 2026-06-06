@@ -1,0 +1,15 @@
+[project]
+name = "a2a-langgraph"
+version = "0.0.0"
+description = "Governed multi-agent platform (A2A + LangGraph + MCP)."
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = []
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.11",
+    "pytest>=9.0.3",
+    "ruff>=0.15.15",
+]
