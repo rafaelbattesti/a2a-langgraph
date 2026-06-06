@@ -46,12 +46,12 @@ services:
       TZ: UTC
       PGTZ: UTC
     ports:
-      - "127.0.0.1:5432:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 3s
       timeout: 3s
       retries: 10
@@ -69,8 +69,8 @@ services:
       - langfuse_clickhouse_data:/var/lib/clickhouse
       - langfuse_clickhouse_logs:/var/log/clickhouse-server
     ports:
-      - "127.0.0.1:8123:8123"
-      - "127.0.0.1:9000:9000"
+      - "8123:8123"
+      - "9000:9000"
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
       interval: 5s
@@ -87,8 +87,8 @@ services:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: miniosecret
     ports:
-      - "127.0.0.1:9090:9000"
-      - "127.0.0.1:9091:9001"
+      - "9090:9000"
+      - "9091:9001"
     volumes:
       - langfuse_minio_data:/data
     healthcheck:
@@ -105,7 +105,7 @@ services:
       --requirepass myredissecret
       --maxmemory-policy noeviction
     ports:
-      - "127.0.0.1:6379:6379"
+      - "6379:6379"
     volumes:
       - langfuse_redis_data:/data
     healthcheck:
@@ -127,7 +127,7 @@ services:
       clickhouse:
         condition: service_healthy
     ports:
-      - "127.0.0.1:3030:3030"
+      - "3030:3030"
     environment:
       <<: *langfuse-env
 
@@ -184,6 +184,37 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  # --- Agents (walking skeleton: uvicorn + one-node LangGraph graph on GET /) ---
+  orchestrator:
+    build:
+      context: ./agents/orchestrator
+    image: a2a-langgraph/orchestrator:0.0.0
+    restart: unless-stopped
+    environment:
+      PORT: "9999"
+    ports:
+      - "9001:9999"
+
+  knowledge:
+    build:
+      context: ./agents/knowledge
+    image: a2a-langgraph/knowledge:0.0.0
+    restart: unless-stopped
+    environment:
+      PORT: "9999"
+    ports:
+      - "9002:9999"
+
+  analysis:
+    build:
+      context: ./agents/analysis
+    image: a2a-langgraph/analysis:0.0.0
+    restart: unless-stopped
+    environment:
+      PORT: "9999"
+    ports:
+      - "9003:9999"
 
 volumes:
   postgres_data:

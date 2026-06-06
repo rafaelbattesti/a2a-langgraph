@@ -34,7 +34,14 @@ Notes (as built — `deploy/compose.yaml`, latest images):
 
 ## Agents
 
-1. Add main stub that creates a simple uvicorn server
-2. Add Dockerfiles
-3. Create minimum agents services in docker compose
-4. Run docker compose up
+1. Add uv dependencies
+2. Add main stub that creates a simple uvicorn server
+3. Add a one node graph that logs the agent's name on GET /
+3. Add Dockerfiles
+4. Create minimum agents services in docker compose
+
+Notes (as built):
+- agents orchestrator/knowledge/analysis are uv workspace members (`members = ["agents/*"]`); runtime deps `langgraph` (1.2.4), `starlette`, `uvicorn`.
+- each `src/<agent>/`: `graph.py` = one-node `StateGraph` whose node logs the agent name; `__main__.py` = Starlette `GET /` → invoke graph → `{"agent": <name>}`; binds `PORT` (default 9999).
+- Dockerfiles: **self-contained + reproducible** — context = each agent's own dir; install pinned `requirements.txt` then `uv pip install --no-deps .`. The `requirements.txt` are exported from the single root `uv.lock` via `make lock` (workspace/lock are local-dev only; never enter an image). `make lock-check` guards drift in CI; CI tests still run on the workspace (`uv sync --all-packages`).
+- compose services orchestrator/knowledge/analysis, host ports 9001/9002/9003 → container 9999.

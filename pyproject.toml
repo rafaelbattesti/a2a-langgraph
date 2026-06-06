@@ -5,7 +5,7 @@ description = "Governed multi-agent platform (A2A + LangGraph + MCP)."
 requires-python = ">=3.12"
 
 [tool.uv.workspace]
-members = []
+members = ["agents/*"]
 
 [dependency-groups]
 dev = [
