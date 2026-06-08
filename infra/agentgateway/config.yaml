@@ -1,7 +1,5 @@
 # Minimal agentgateway config for local development.
-# Single A2A ingress listener; the backend points at the (not-yet-built)
-# orchestrator, so requests will 5xx until it exists — but the gateway boots.
-# Schema mirrors agentgateway's own examples/a2a/config.yaml.
+# Schema: https://raw.githubusercontent.com/agentgateway/agentgateway/main/schema/config.json
 config:
   logging:
     format: json
@@ -18,7 +16,6 @@ binds:
                 allowHeaders:
                   - content-type
                   - cache-control
-              # mark this route as A2A traffic
               a2a: {}
             backends:
               - host: orchestrator:9999

@@ -1,25 +1,41 @@
 # Architecture
 
-> **Mission:** the architectural *pattern* is the product. The workloads in §8 exist only to
-> demonstrate the pattern. This document is the contract the implementation is held to;
-> changes to it are deliberate architecture decisions, logged in §10.
+> **Mission**: Define an **OSS First Enterprise Multi Agent Platform Implementation Pattern**
+> **Motto**: *The pattern is the product, the canon is the implementation*
+> **ARCHITECTURE.md**: The official contract the implementation is held to. Changes to it are deliberate architectural decisions.
 
-Every component traces to a **force**, not to a previous attempt. Boundaries that matter have
-a **fitness function** (§9) that fails the build when they erode — the antidote to the prior
-collapse from unreviewed sprawl.
+Every component traces to a **force**, not to a previous attempt. Boundaries have
+a **fitness function** (§9) that fails the build when they erode.
 
 ---
 
 ## 1. What the system is
 
-A **governed multi-agent platform**, all-Python backend. A chat request enters through a UI,
-is **classified then deterministically routed** to a specialized agent that runs over **A2A**,
-reaching tools and data only through governed seams. New workloads are *registered*, not
-grafted in.
+An **OSS First Enterprise Multi Agent Platform Implementation Pattern** that delivers strictly governed components. A chat request enters through a Copilotkit UI as an A2UI payload, is translated to an A2A payload by a Copilotkit runtime server, forwarded to a Solo.io agentgateway that authenticates the request and forwards it to the OrchestratorAgent, where it is **classified and routed** by an **A2A Client** to a **specialized agent**, reaching tools and data only through **MCP Servers**.
 
-Defining property: agents are **independently-deployable services that interoperate over
-A2A**. The demonstrated claim is **standards-based agent interop + independent deployability**
-(cross-language interop is *not* claimed — the system is single-language by choice).
+### 1.1. Central Governance Components
+1. **Agent Registry**: Official AI artifact registry for **agents, prompts, skills and MCP servers**
+2. **Agent Gateway**: Official Ingress and Egress traffic interceptor and rule enforcer.
+3. **OTel & Langfuse**: Official observability stack and platform.
+
+### 1.2. Central Functional Components
+1. **A2A**: Communication protocol
+2. **LangGraph**: Agent logic, checkpointing, memory and context custodian. Integrates with **A2A** to handle requests.
+3. **MCP**: Tool gateway.
+4. **Contracts**: A2A Agent Card **extensions** that give agents domain specific attribute structures. E.g. Query classification.
+
+### 1.3. The Orchestrator Component
+1. **Chat Memory**: Manages individual chat memory.
+2. **User Memory**: Manages user memory that spans across chats.
+3. **Query Classification**: Entities, complexity, goals.
+4. **Response Gate**: Assesses responses for safety, tone, alignment, correctness.
+
+### 1.4. DevOps Principles
+1. **Roll-forward trunk based development**: Commits go straight to `main`, strong CI/CD discipline. `release/<version>` branches are stabilized, tagged and submit pull request to `main`. A pull request to main is the authority over releases.
+2. **Build once, deploy many**: A tested artifact must remain immutable until it reaches production through promotion.
+1. **Single build mechanism**: Docker compose is the single source of truth for `local` and `CI` artifact builds.
+1. **Registered AI Artifacts**: Built and persisted in the Agent Registry: Agents, Skills, Prompts, MCP Servers.
+2. **Policies**: Configured in the Agent Gateway, version controled in github.
 
 ## 2. The pattern (the product)
 
@@ -33,19 +49,7 @@ A2A**. The demonstrated claim is **standards-based agent interop + independent d
 - **Cross-cutting governance is delivered as adopted services** (gateway, registry, langfuse),
   not as code agents link.
 
-### 2.2 Dependency Rule (per agent, lean)
-
-```
-  graph.py (LangGraph + all I/O: A2A, llm, retrieval, gateway, registry)  ──uses──▶  domain/
-  domain/ is pure: imports no framework/driver.
-```
-
-The single enforced boundary: **`domain/` must not import `a2a`, `langgraph`, `mcp`, or any
-driver** (`.importlinter` per agent, §9). Framework calls live in `graph.py`. Ports/adapters
-folders are intentionally omitted for now (lean); reintroduce them if an agent's I/O grows
-enough to warrant isolation.
-
-### 2.3 Topology
+### 2.2 Topology
 
 ```
         React + CopilotKit (ui/web)

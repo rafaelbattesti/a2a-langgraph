@@ -3,7 +3,7 @@
 import logging
 from typing import TypedDict
 
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import END, START, StateGraph, CompiledStateGraph
 
 logger = logging.getLogger(__name__)
 
@@ -13,14 +13,16 @@ AGENT_NAME = "orchestrator"
 class State(TypedDict):
     name: str
 
+class Context(TypedDict):
+    name: str
 
-def _identify(state: State) -> State:
-    logger.info("agent '%s' handled a request", state["name"])
+def _identify(state: State, context: Context) -> State:
+    logger.info("agent '%s' handled a request with context '%s'", state["name"], context["name"])
     return state
 
 
-def build_graph():
-    builder = StateGraph(State)
+def build_graph() -> CompiledStateGraph:
+    builder = StateGraph(State, Context)
     builder.add_node("identify", _identify)
     builder.add_edge(START, "identify")
     builder.add_edge("identify", END)

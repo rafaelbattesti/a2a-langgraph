@@ -185,7 +185,6 @@ services:
       postgres:
         condition: service_healthy
 
-  # --- Agents (walking skeleton: uvicorn + one-node LangGraph graph on GET /) ---
   orchestrator:
     build:
       context: ./agents/orchestrator
@@ -193,6 +192,7 @@ services:
     restart: unless-stopped
     environment:
       PORT: "9999"
+      AGENT_URL: "http://orchestrator:9999"
     ports:
       - "9001:9999"
 
@@ -203,6 +203,7 @@ services:
     restart: unless-stopped
     environment:
       PORT: "9999"
+      AGENT_URL: "http://knowledge:9999"
     ports:
       - "9002:9999"
 
@@ -213,6 +214,7 @@ services:
     restart: unless-stopped
     environment:
       PORT: "9999"
+      AGENT_URL: "http://analysis:9999"
     ports:
       - "9003:9999"
 

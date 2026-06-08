@@ -3,8 +3,8 @@ name = "analysis"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
+    "a2a-sdk[all]==1.1.0",
     "langgraph",
-    "starlette",
     "uvicorn",
 ]
 

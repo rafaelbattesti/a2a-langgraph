@@ -45,3 +45,12 @@ Notes (as built):
 - each `src/<agent>/`: `graph.py` = one-node `StateGraph` whose node logs the agent name; `__main__.py` = Starlette `GET /` → invoke graph → `{"agent": <name>}`; binds `PORT` (default 9999).
 - Dockerfiles: **self-contained + reproducible** — context = each agent's own dir; install pinned `requirements.txt` then `uv pip install --no-deps .`. The `requirements.txt` are exported from the single root `uv.lock` via `make lock` (workspace/lock are local-dev only; never enter an image). `make lock-check` guards drift in CI; CI tests still run on the workspace (`uv sync --all-packages`).
 - compose services orchestrator/knowledge/analysis, host ports 9001/9002/9003 → container 9999.
+
+## Agents 2
+
+**Rule**: Use this reference for A2A implementation in this iteration: https://github.com/a2aproject/a2a-python/blob/main/docs/migrations/v1_0/README.md
+
+1. Replace Starlette dependency with A2A Python SDK 1.1.0 for each agents/agent_name.
+2. In each agents/agent_name/card.py, create a basic agent card according to the reference, use only the JSONRPC interface.
+3. Create agent.py for each agent/agent_name and define AgentNameAgent, AgentNameExecutor (streaming - pattern B), AgentNameRequestHandler.
+4. When instantiating AgentNameExecutor, pass the graph object to `self._agent` and call `invoke` from the graph object.

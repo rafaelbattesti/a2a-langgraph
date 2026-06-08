@@ -1,30 +1,26 @@
-"""Uvicorn entrypoint: minimal HTTP server running the knowledge agent's graph."""
+"""Uvicorn entrypoint for the knowledge A2A agent."""
 
 import logging
 import os
 
 import uvicorn
+from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
 from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 
-from knowledge.graph import AGENT_NAME, build_graph
+from knowledge.agent import KnowledgeRequestHandler
+from knowledge.card import build_card, _RPC_PATH
 
 logging.basicConfig(level=logging.INFO)
 
-_graph = build_graph()
-
-
-async def root(_request: Request) -> JSONResponse:
-    result = _graph.invoke({"name": AGENT_NAME})
-    return JSONResponse({"agent": result["name"]})
-
-
-app = Starlette(routes=[Route("/", root, methods=["GET"])])
-
 
 def main() -> None:
+    card = build_card()
+    handler = KnowledgeRequestHandler(card)
+    routes = [
+        *create_agent_card_routes(card),
+        *create_jsonrpc_routes(handler.request_handler, rpc_url=_RPC_PATH),
+    ]
+    app = Starlette(routes=routes)
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "9999")))
 
 
