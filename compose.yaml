@@ -3,7 +3,7 @@
 # DEV ONLY — all credentials below are insecure defaults for local use.
 # Adopted infra images, pinned to their current latest (see ARCHITECTURE.md §5).
 # Application images (agents, services, ui) are NOT here yet; this is the infra tier.
-name: a2a-langgraph
+name: oss-multi-agent-chatbot
 
 # Shared Langfuse env, reproduced from langfuse's canonical docker-compose.yml.
 x-langfuse-env: &langfuse-env
@@ -184,6 +184,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+    environment:
+      ORCHESTRATOR_AGENT_CARD_URL: http://agentgateway:3002/.well-known/agent-card.json
+      PORT: 3000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   orchestrator:
     build:
