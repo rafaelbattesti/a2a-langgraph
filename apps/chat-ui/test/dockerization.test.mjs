@@ -70,10 +70,10 @@ test("root compose file defines the chat-ui service", async () => {
 
   const compose = await readFile(composePath, "utf8");
 
-  assert.match(compose, /services:\s*\n\s+chat-ui:/);
+  assert.match(compose, /^  chat-ui:/m);
   assert.match(compose, /context:\s+\.\/apps\/chat-ui/);
   assert.match(compose, /dockerfile:\s+Dockerfile/);
-  assert.match(compose, /NEXT_PUBLIC_A2A_SERVER_URL:\s+\$\{NEXT_PUBLIC_A2A_SERVER_URL:-http:\/\/localhost:9999\}/);
+  assert.match(compose, /NEXT_PUBLIC_A2A_SERVER_URL:\s+http:\/\/localhost:9999/);
   assert.match(compose, /PORT:\s+"3000"/);
   assert.match(compose, /HOSTNAME:\s+"0\.0\.0\.0"/);
   assert.match(compose, /"3000:3000"/);

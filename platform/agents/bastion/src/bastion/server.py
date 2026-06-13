@@ -1,10 +1,17 @@
 from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
+from a2a.server.routes import (
+  create_agent_card_routes,
+  create_jsonrpc_routes,
+  create_rest_routes,
+)
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentInterface, AgentSkill
 from starlette.applications import Starlette
+from starlette.middleware.cors import CORSMiddleware
 
 from bastion.executor import BastionAgentExecutor
+
+CHAT_UI_ORIGIN = "http://localhost:3000"
 
 
 def create_agent_card(base_url: str) -> AgentCard:
@@ -27,6 +34,7 @@ def create_agent_card(base_url: str) -> AgentCard:
     capabilities=AgentCapabilities(streaming=False),
     supported_interfaces=[
       AgentInterface(protocol_binding="JSONRPC", url=base_url),
+      AgentInterface(protocol_binding="HTTP+JSON", url=base_url),
     ],
     skills=[skill],
   )
@@ -43,8 +51,17 @@ def create_app(base_url: str) -> Starlette:
   routes = []
   routes.extend(create_agent_card_routes(public_agent_card))
   routes.extend(create_jsonrpc_routes(request_handler, "/"))
-  return Starlette(routes=routes)
+  routes.extend(create_rest_routes(request_handler))
+
+  app = Starlette(routes=routes)
+  app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[CHAT_UI_ORIGIN],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["A2A-Version", "A2A-Extensions", "Content-Type", "Accept"],
+  )
+  return app
 
 
-agent_card = create_agent_card("http://127.0.0.1:9999")
-app = create_app("http://127.0.0.1:9999")
+agent_card = create_agent_card("http://localhost:9999")
+app = create_app("http://localhost:9999")

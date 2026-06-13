@@ -42,3 +42,5 @@
 
 - The UI runs as a Next.js standalone app container built from `apps/chat-ui`.
 - The Bastion A2A agent is a stub server under `platform/agents/bastion`; it uses uv, LangGraph, and the A2A Python SDK, exposes agent-card discovery and JSON-RPC, has no LLM connectivity, and echoes the received request payload in a user-visible response message.
+- The Bastion A2A agent runs as a Docker Compose service named `bastion`, publishing container port `9999` to host port `9999`; the browser-facing chat UI A2A URL remains `http://localhost:9999`.
+- The Bastion A2A agent supports browser access from the chat UI by allowing CORS for `http://localhost:3000` and exposing A2A REST/HTTP+JSON routes alongside JSON-RPC.
