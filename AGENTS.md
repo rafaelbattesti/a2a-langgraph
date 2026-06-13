@@ -63,9 +63,9 @@ You must never rely only on your weights and biases to provide a professional su
 When forced to make an assumption, do not guess silently.
 State your doubt explicitly and ask the user which path to take.
 
-## Record keeping
+### Record keeping
 
-### Task record
+#### Task record
 
 - **Rule**
 
@@ -91,9 +91,9 @@ State your doubt explicitly and ask the user which path to take.
     - [] [criteria #. criteria description, for example: the action to take]
   ```
 
-### Feedback record
+#### Feedback record
 
-- **Task: write-feedback** 
+- **Rule** 
 
   Locate `## Feedback record` in `docs/HISTORY.md` and write a new feedback according to the following criteria:
 
@@ -111,7 +111,7 @@ State your doubt explicitly and ask the user which path to take.
   [your interpretation of the feedback]
   ```
 
-### Decision record
+#### Decision record
 
 - **Rule** 
 
@@ -129,9 +129,9 @@ State your doubt explicitly and ask the user which path to take.
   [The decision made]
   ```
 
-  Update `SYSTEM.md` with the decision by inserting the decision either under a single affected component, or under `## System decisions`
+  After creating the decision record, update `SYSTEM.md` with the decision follwing the pattern in `## System decisions`
 
-### Checkpoint record
+#### Checkpoint record
 
 - **Rule** 
 
@@ -148,5 +148,5 @@ State your doubt explicitly and ask the user which path to take.
 
   **Summary**
 
-  [A summary of you actual context window]
+  [A summary of you actual context window, following the Be concise ]
   ```
