@@ -179,7 +179,7 @@ They should be health indicators of:
 
 - **Rule** 
 
-  > Whenever the user requests a checkpoint.
+  > You must create a checkpoint record **before** you make any compression changes to the context window.
   
   > Locate `## Checkpoint record` in `docs/HISTORY.md` and write a new checkpoint according to the following criteria:
 
@@ -192,5 +192,7 @@ They should be health indicators of:
 
   **Summary**
 
-  > [A summary of you actual context window, following the Be concise ]
+  > [A summary of you actual context window, following the Be concise]
   ```
+
+  > You must read `AGENTS.md` and acknowledge after context window compression.
