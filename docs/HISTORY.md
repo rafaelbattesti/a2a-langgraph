@@ -56,6 +56,36 @@ Added scope: update SYSTEM.md
 
 
 
+## Task:3
+
+**Timestamp** 2026-06-13T03:38:08Z
+
+**Description**
+
+stub an A2A agent (server) in platform/agents using uv, LangGraph latest version and A2A Python SDK latest version. As a stub, this agent will only implement the minimum requirement to be able to receive and respond to an A2A payload, no LLM connectivity now.
+
+Refined by user:
+1. The agent must be created in `platform/agents/bastion`.
+2. The response must encapsulate the request payload received by the agent in the response message field displayed to the user.
+3. The server must expose JSON-RPC and define/expose an agent-card discovery route.
+4. The implementation may use the `multi-agent-architect` skill.
+
+**Assistant assumptions**
+
+  - 1. None.
+
+**Success criteria**
+
+  - [ ] 1. `platform/agents/bastion` contains a uv-managed Python project with `pyproject.toml` and `uv.lock`.
+  - [ ] 2. The project depends on `langgraph==1.2.5` and `a2a-sdk==1.1.0`.
+  - [ ] 3. The server defines an A2A agent card and exposes the discovery route.
+  - [ ] 4. The server exposes an A2A JSON-RPC endpoint.
+  - [ ] 5. The agent uses LangGraph without LLM connectivity.
+  - [ ] 6. The agent response message visible to the user contains the request payload received by the agent.
+  - [ ] 7. Unit tests are written before implementation and verify graph behavior, A2A app wiring, and response payload behavior.
+
+
+
 ## Feedback record
 
 ### Feedback:1
@@ -155,6 +185,14 @@ The user positively reinforced the self-correction: I identified the AGENTS.md r
 **Decision**
 
 The chat UI will be containerized as a Next.js standalone app by setting `output: "standalone"` in `apps/chat-ui/next.config.ts` and running the generated standalone server in the container.
+
+### Decision:2
+
+**Timestamp** 2026-06-13T03:45:21Z
+
+**Decision**
+
+The Bastion A2A agent is a stub A2A server under `platform/agents/bastion`. It uses uv, LangGraph, and the A2A Python SDK; exposes an agent-card discovery route and JSON-RPC endpoint; uses no LLM connectivity; and responds with a user-visible message containing the received request payload.
 
 
 

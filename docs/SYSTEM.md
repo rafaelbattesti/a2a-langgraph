@@ -41,3 +41,4 @@
 ## System decisions
 
 - The UI runs as a Next.js standalone app container built from `apps/chat-ui`.
+- The Bastion A2A agent is a stub server under `platform/agents/bastion`; it uses uv, LangGraph, and the A2A Python SDK, exposes agent-card discovery and JSON-RPC, has no LLM connectivity, and echoes the received request payload in a user-visible response message.
