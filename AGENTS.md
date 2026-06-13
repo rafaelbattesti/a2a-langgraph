@@ -67,11 +67,11 @@ State your doubt explicitly and ask the user which path to take.
 
 ### Task record
 
-- **Task: create-task** 
+- **Rule**
 
-  Before writing the task to `docs/HISTORY.md`, you must iterate with the user and ask questions until you have a deterministic set of success criterion to implement.
+  When the user uses `/goal`, you must analyze the user's request, ground yourself and iterate with the user, asking questions until you have a deterministic set of success criterion to implement.
 
-  Locate `## Task record` in `docs/HISTORY.md`create a new task according to the following criteria:
+  Once you have established the success criteria, locate `## Task record` in `docs/HISTORY.md` and create a new task according to the following criteria:
 
   ```
   ## Task:[Task ID - sequential numbers]
@@ -113,9 +113,11 @@ State your doubt explicitly and ask the user which path to take.
 
 ### Decision record
 
-- **Task: record-decision** 
+- **Rule** 
 
-  Locate `## Decision record` in `docs/HISTORY.md` and write a new decision according to the following criteria:
+  Whenever a decision is made, output is to the user and ask for approval.
+  
+  When approved, locate `## Decision record` in `docs/HISTORY.md` and write a new decision according to the following criteria:
 
   ```
   ### Decision:[decision id - sequential numbers]
@@ -131,8 +133,10 @@ State your doubt explicitly and ask the user which path to take.
 
 ### Checkpoint record
 
-- **Task: create-checkpoint** 
+- **Rule** 
 
+  Whenever the user requests a checkpoint.
+  
   Locate `## Checkpoint record` in `docs/HISTORY.md` and write a new checkpoint according to the following criteria:
 
   ```
@@ -144,5 +148,5 @@ State your doubt explicitly and ask the user which path to take.
 
   **Summary**
 
-  [your actual context window summary]
+  [A summary of you actual context window]
   ```

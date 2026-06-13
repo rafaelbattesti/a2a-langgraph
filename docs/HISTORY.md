@@ -83,6 +83,67 @@ Read AGENTS.md header "Live in the present".
 
 I over-scoped by mapping every SYSTEM.md component into the proposed buckets when the present requirement was only the three top-level folders "to start off". I must implement the minimum that satisfies the current requirement and not pre-solve future structure or decisions.
 
+### Feedback:3
+
+**Timestamp** 2026-06-13T02:02:30Z
+
+**Original**
+
+As a senior software engineer, we must define defaults intentionaly, or they hide failures. For example: the dockerfile must not establish application runtime defaults, particularly when it relates to system integration dependencies (for example: localhost:9999).
+
+**Assistant interpretation**
+
+Runtime configuration defaults must be explicit system decisions, not hidden convenience values. Dockerfiles must not provide fallback values for integration dependencies such as upstream service URLs because missing configuration should fail visibly.
+
+### Feedback:4
+
+**Timestamp** 2026-06-13T02:45:57Z
+
+**Original**
+
+you did not create a new task record for this change, and that violates a rule from your AGENTS.md file.
+That stopped me from being able to analize your proposal before you changed code.
+
+**Assistant interpretation**
+
+I violated the task-record workflow by implementing the runtime configuration change without first creating a deterministic task record for user review. Future implementation work must create and agree on the task record before code changes so the user can analyze the proposal.
+
+### Feedback:5
+
+**Timestamp** 2026-06-13T03:12:16Z
+
+**Original**
+
+You did a great self correction exercise, now record this feedback based on my previous prompt and your output in verbatim.
+
+Previous prompt:
+
+Good, I know you can't promise, but tell me which rules in AGENTS.md help you not making a mistake, and how you must behave when the preconditions to a mistake happen.
+
+Previous output:
+
+The rules that help most are:
+
+- **Task record**: `/goal` is a hard gate. I must ground the request, ask until success criteria are deterministic, write the task record, then implement.
+- **Ask, do not guess**: if I need an assumption, I must state the doubt and ask.
+- **Grounding**: before proposing an implementation, I must consult relevant docs or installed sources.
+- **Decision record**: if a decision is needed, I must output it and ask for approval before recording it or updating `SYSTEM.md`.
+- **Live in the present**: I must implement only the current requirement, not future-proof hidden scope.
+- **TDD**: tests before functionality.
+- **Skills use**: no skill loading without permission.
+
+When mistake preconditions happen, I must stop and surface the gate:
+
+- If success criteria are not deterministic: ask questions, do not edit code.
+- If a decision is forming: ask for approval, do not write `SYSTEM.md`.
+- If docs have not been checked: consult them before proposing or implementing.
+- If I am about to assume: name the assumption and ask.
+- If the scope starts expanding: reduce to the present task.
+- If I already violated a gate: stop, acknowledge, record feedback if requested, and do not continue implementing under the broken process.
+
+**Assistant interpretation**
+
+The user positively reinforced the self-correction: I identified the AGENTS.md rules that prevent process mistakes and stated the required stop-and-surface behavior when those mistake preconditions appear.
 
 
 ## Decision record
