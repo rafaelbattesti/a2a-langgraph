@@ -116,13 +116,13 @@ This file should trace the entire history of the development of this system.
 
 **Debugging**
 
-  - [ ] RC:1. Bastion does not handle browser CORS preflight requests from `http://localhost:3000`.
+  - [x] RC:1. Bastion does not handle browser CORS preflight requests from `http://localhost:3000`.
   - Proposal:1. Add Starlette CORS handling to Bastion for the chat-ui origin, A2A headers, and required HTTP methods.
 
-  - [ ] RC:2. `@assistant-ui/react-a2a` calls A2A REST/HTTP+JSON endpoints, while Bastion currently exposes only JSON-RPC at `/`.
+  - [x] RC:2. `@assistant-ui/react-a2a` calls A2A REST/HTTP+JSON endpoints, while Bastion currently exposes only JSON-RPC at `/`.
   - Proposal:2. Expose A2A REST routes from the installed A2A Python SDK while preserving the existing JSON-RPC route.
 
-  - [ ] RC:3. Because CORS blocks agent-card discovery, chat-ui cannot read `streaming: false` and defaults to calling `/message:stream`.
+  - [x] RC:3. Because CORS blocks agent-card discovery, chat-ui cannot read `streaming: false` and defaults to calling `/message:stream`.
   - Proposal:3. Verify agent-card discovery succeeds through CORS and that the client uses non-streaming `/message:send` for the current Bastion stub.
 
 
@@ -249,3 +249,55 @@ This file should trace the entire history of the development of this system.
 
 
 ## Accumulated technical debt record
+
+### Technical Debt:[2026-06-13T21:36:30Z:001d8b5]
+
+- Debt:[1]
+  - Debt: Ingress acknowledgement is not tied to durable task or run persistence.
+  - Payment plan: Persist before acknowledgement.
+    - [] 1. Define the durable task/run record required before returning an accepted response.
+
+- Debt:[2]
+  - Debt: Future Redis handoff will require at-least-once delivery idempotency.
+  - Payment plan: Add idempotent processing keys.
+    - [] 1. Define `task_id`, `run_id`, and event sequence idempotency rules.
+
+- Debt:[3]
+  - Debt: `InMemoryTaskStore` is not a durable task state source of truth.
+  - Payment plan: Introduce durable task storage.
+    - [] 1. Select the first durable task state backend for A2A task records.
+
+- Debt:[4]
+  - Debt: SSE delivery has no replay or resume mechanism.
+  - Payment plan: Support resumable event streams.
+    - [] 1. Define how `Last-Event-ID` maps to stored task events.
+
+- Debt:[5]
+  - Debt: Cross-worker event ordering is not specified.
+  - Payment plan: Add per-task ordering.
+    - [] 1. Define a monotonic event sequence for every task.
+
+- Debt:[6]
+  - Debt: Queue backpressure, retention, and dead-letter behavior are undefined.
+  - Payment plan: Define Redis stream operations policy.
+    - [] 1. Specify trimming, pending-entry recovery, and dead-letter rules.
+
+- Debt:[7]
+  - Debt: Internal events are not yet mapped to A2A task event types.
+  - Payment plan: Add an event translation boundary.
+    - [] 1. Define mappings to `TaskStatusUpdateEvent`, `TaskArtifactUpdateEvent`, and final `Task`.
+
+- Debt:[8]
+  - Debt: Cancellation is exposed but not implemented by the worker path.
+  - Payment plan: Add cooperative cancellation.
+    - [] 1. Define cancellation checks before and during task execution.
+
+- Debt:[9]
+  - Debt: Queue and event operations do not yet enforce tenant/user ownership.
+  - Payment plan: Add ownership metadata.
+    - [] 1. Define required tenant, user, and authorization fields for task events.
+
+- Debt:[10]
+  - Debt: Bastion execution is still synchronous and SDK-local.
+  - Payment plan: Move execution behind a queue while preserving A2A semantics.
+    - [] 1. Define the first queued handoff contract between ingress and worker.
